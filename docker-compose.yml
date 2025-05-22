@@ -1,0 +1,76 @@
+services:
+
+  # iris
+  iris:
+    init: true
+    container_name: iris
+    build:
+      context: .
+      dockerfile: iris/Dockerfile
+    ports:
+      - 52774:52773
+      - 51774:1972
+    volumes:
+    - ./iris/shared:/shared
+    environment:
+    - ISC_DATA_DIRECTORY=/shared/durable
+    command: --check-caps false --ISCAgent false
+    
+  # jupyter notebook
+  jupyter:
+    build:
+      context: .
+      dockerfile: jupyter/Dockerfile
+    container_name: jupyter
+    ports: 
+      - "8888:8888"
+    environment: 
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_ALLOW_INSECURE_WRITES=true
+    volumes: 
+      - ./jupyter:/home/jovyan
+      - ./data:/app/data
+    command: "start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''" 
+  
+  # mysql
+  mysql:
+    build:
+      context: mysql
+    container_name: mysql
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: SYS
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpassword
+      MYSQL_DATABASE: test
+    volumes:
+    - ./mysql/sql/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    ports:
+      - 3306:3306
+
+  # oracle
+  oracle:
+    build:
+      context: oracle
+    container_name: oracle
+    environment:
+      ORACLE_SID: test
+      ORACLE_PDB: testPDB
+      ORACLE_PWD: testpassword    
+    volumes:
+    - ./oracle/data:/opt/oracle/oradata
+    - ./oracle/sql:/opt/oracle/scripts/startup
+    ports:
+    - 1521:1521
+
+# adminer
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    depends_on:
+      - mysql
+      - oracle
+    ports:
+      - 8081:8080
